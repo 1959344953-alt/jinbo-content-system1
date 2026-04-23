@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "../middleware";
-import { getDb } from "../queries/connection";
+import { db } from "../queries/connection";
 import { entries } from "../../db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export const entryRouter = createRouter({
   list: publicQuery
@@ -14,7 +14,6 @@ export const entryRouter = createRouter({
       }).optional()
     )
     .query(async ({ input }) => {
-      const db = getDb();
       const filters = [];
       if (input?.region) filters.push(eq(entries.region, input.region));
       if (input?.status) filters.push(eq(entries.approveStatus, input.status));
@@ -38,11 +37,32 @@ export const entryRouter = createRouter({
         );
       }
 
-      return result;
+      return result.map(r => ({
+        ...r,
+        screenshotUploaded: Boolean(r.screenshotUploaded),
+        received: Boolean(r.received),
+        screenshotData: r.screenshotData ?? "",
+        orgAddress: r.orgAddress ?? "",
+        publishDate: r.publishDate ?? "",
+        contentLink: r.contentLink ?? "",
+        approveDate: r.approveDate ?? "",
+        approver: r.approver ?? "",
+        dataCollectDate: r.dataCollectDate ?? "",
+        readCount: r.readCount ?? 0,
+        likes: r.likes ?? 0,
+        favorites: r.favorites ?? 0,
+        comments: r.comments ?? 0,
+        interactCount: r.interactCount ?? 0,
+        tier: r.tier ?? "",
+        rewardCount: r.rewardCount ?? 0,
+        sendDate: r.sendDate ?? "",
+        trackingNo: r.trackingNo ?? "",
+        receiveDate: r.receiveDate ?? "",
+        note: r.note ?? "",
+      }));
     }),
 
   stats: publicQuery.query(async () => {
-    const db = getDb();
     const all = await db.select().from(entries);
 
     const totalEntries = all.length;
@@ -123,7 +143,6 @@ export const entryRouter = createRouter({
       })
     )
     .mutation(async ({ input }) => {
-      const db = getDb();
       const result = await db.insert(entries).values({
         region: input.region,
         recordDate: input.recordDate,
@@ -149,8 +168,8 @@ export const entryRouter = createRouter({
         tier: input.tier ?? "",
         rewardCount: input.rewardCount ?? 0,
         note: input.note ?? "",
-      });
-      return result;
+      }).returning();
+      return result[0];
     }),
 
   update: publicQuery
@@ -192,7 +211,6 @@ export const entryRouter = createRouter({
     )
     .mutation(async ({ input }) => {
       const { id, ...data } = input;
-      const db = getDb();
 
       const updateData: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(data)) {
@@ -213,7 +231,6 @@ export const entryRouter = createRouter({
   delete: publicQuery
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
-      const db = getDb();
       await db.delete(entries).where(eq(entries.id, input.id));
       return { success: true };
     }),
@@ -225,7 +242,6 @@ export const entryRouter = createRouter({
       approver: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
       await db.update(entries).set({
         approveStatus: input.status,
         approveDate: new Date().toISOString().split("T")[0],
@@ -241,7 +257,6 @@ export const entryRouter = createRouter({
       trackingNo: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
       const updateData: Record<string, unknown> = {
         sendStatus: input.status,
       };
@@ -262,67 +277,10 @@ export const entryRouter = createRouter({
       receiveDate: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
       await db.update(entries).set({
         received: input.received ? 1 : 0,
         receiveDate: input.received ? (input.receiveDate ?? new Date().toISOString().split("T")[0]) : "",
       }).where(eq(entries.id, input.id));
       return { success: true };
-    }),
-
-  export: publicQuery
-    .input(
-      z.object({
-        region: z.string().optional(),
-        status: z.string().optional(),
-      }).optional()
-    )
-    .query(async ({ input }) => {
-      const db = getDb();
-      const filters = [];
-      if (input?.region) filters.push(eq(entries.region, input.region));
-      if (input?.status) filters.push(eq(entries.approveStatus, input.status));
-
-      let result;
-      if (filters.length > 0) {
-        result = await db.select().from(entries).where(and(...filters)).orderBy(desc(entries.createdAt));
-      } else {
-        result = await db.select().from(entries).orderBy(desc(entries.createdAt));
-      }
-
-      return result.map((r) => ({
-        id: r.id,
-        region: r.region,
-        recordDate: r.recordDate,
-        orgName: r.orgName,
-        orgAddress: r.orgAddress ?? "",
-        city: r.city,
-        platform: r.platform,
-        accountType: r.accountType,
-        accountName: r.accountName,
-        contentType: r.contentType,
-        product: r.product,
-        publishDate: r.publishDate ?? "",
-        contentLink: r.contentLink ?? "",
-        approveStatus: r.approveStatus,
-        approveDate: r.approveDate ?? "",
-        approver: r.approver ?? "",
-        dataCollectDate: r.dataCollectDate ?? "",
-        screenshotUploaded: r.screenshotUploaded ? "是" : "否",
-        readCount: r.readCount ?? 0,
-        likes: r.likes ?? 0,
-        favorites: r.favorites ?? 0,
-        comments: r.comments ?? 0,
-        interactCount: r.interactCount ?? 0,
-        tier: r.tier ?? "",
-        rewardCount: r.rewardCount ?? 0,
-        sendStatus: r.sendStatus,
-        sendDate: r.sendDate ?? "",
-        trackingNo: r.trackingNo ?? "",
-        received: r.received ? "是" : "否",
-        receiveDate: r.receiveDate ?? "",
-        note: r.note ?? "",
-        createdAt: r.createdAt,
-      }));
     }),
 });

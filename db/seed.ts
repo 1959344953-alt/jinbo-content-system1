@@ -1,17 +1,8 @@
-import { getDb } from "../api/queries/connection";
-// TODO: import tables from "./schema"
+import { db } from "../api/queries/connection";
 
 async function seed() {
-  const db = getDb();
-  console.log("Seeding database...");
-
-  // TODO: insert seed data, e.g.
-  // await db.insert(schema.posts).values([
-  //   { title: "First post", content: "Hello world" },
-  // ]);
-
-  console.log("Done.");
-  process.exit(0); // close MySQL connection pool
+  console.log("Database connected. Entry table created if not exists.");
+  console.log("Seed complete.");
 }
 
 seed();

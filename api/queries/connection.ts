@@ -1,18 +1,9 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import { env } from "../lib/env";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
 import * as schema from "@db/schema";
-import * as relations from "@db/relations";
 
-const fullSchema = { ...schema, ...relations };
+const dbPath = process.env.DATABASE_PATH || "/data/data.db";
+const client = new Database(dbPath);
+client.exec("PRAGMA journal_mode = WAL;");
 
-let instance: ReturnType<typeof drizzle<typeof fullSchema>>;
-
-export function getDb() {
-  if (!instance) {
-    instance = drizzle(env.databaseUrl, {
-      mode: "planetscale",
-      schema: fullSchema,
-    });
-  }
-  return instance;
-}
+export const db = drizzle(client, { schema });

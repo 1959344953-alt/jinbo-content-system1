@@ -17,7 +17,7 @@ COPY --from=build /app/api ./api
 COPY --from=build /app/db ./db
 COPY --from=build /app/contracts ./contracts
 COPY --from=build /app/index.html ./
-COPY package.json .env .dockerignore drizzle.config.ts tsconfig.server.json vite.config.ts tailwind.config.js postcss.config.js ./
+COPY package.json .dockerignore drizzle.config.ts tsconfig.server.json vite.config.ts tailwind.config.js postcss.config.js ./
 
 EXPOSE 3000
 CMD ["npm", "start"]
